@@ -1,0 +1,1 @@
+This is an implementation of slow feature analysis, based on James Stone and Alistair Bray's 1995 paper: "A learning rule for extracting spatio-temporal invariances"
