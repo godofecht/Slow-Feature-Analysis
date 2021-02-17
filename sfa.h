@@ -39,7 +39,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 200*ro;
+    int TOTAL_TIME = 1000*ro;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
