@@ -39,7 +39,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 500*ro;
+    int TOTAL_TIME = 1000*ro;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
@@ -220,7 +220,8 @@ class SFA : public Model
             OscillateFeedForwardTuple(v[0],v[1],t);
 
 
-
+            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
+            corVector2.push_back(pearsoncoeff(signalVector2,resultVector2));
 
         }
         alpha = 0.001f;
@@ -235,7 +236,7 @@ class SFA : public Model
 
 
             corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
-            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
+            corVector2.push_back(pearsoncoeff(signalVector2,resultVector2));
         }  
         
         std::vector<std::pair<std::string,
