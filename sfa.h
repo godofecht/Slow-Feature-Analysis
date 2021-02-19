@@ -39,7 +39,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 1000*ro;
+    int TOTAL_TIME = 500*ro;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
@@ -203,6 +203,8 @@ class SFA : public Model
 
     void TrainTwoInvariances()
     {
+        vector<double> corVector1,corVector2; //correlation vector. I should probably move this to the header.
+
         cout<<"started training"<<endl;
         alpha = 0.0f;
         for(int t=0;t<4.0f * ro;t++)
@@ -229,19 +231,40 @@ class SFA : public Model
             signalVector2.push_back(v[1]);
             OscillateFeedForwardTuple(v[0],v[1],t);
             getNetwork()->UpdateWeights();
+
+
+
+            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
+            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
         }  
         
         std::vector<std::pair<std::string,
         std::vector<double>>> Output1 = {{"Values", resultVector1}};
-        write_csv("output1_two.csv", Output1);
+        write_csv("output1.csv", Output1);
 
         std::vector<std::pair<std::string,
         std::vector<double>>> Output2 = {{"Values", resultVector2}};
-        write_csv("output2_two.csv", Output2);
+        write_csv("output2.csv", Output2);
         
         std::vector<std::pair<std::string,
         std::vector<double>>> weights_two = {{"j", getNetwork()->GetWeights()}};
         write_csv("weight_vector.csv", weights_two);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> O1 = {{"Values", signalVector1}};
+        write_csv("signal1.csv", O1);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> S2 = {{"Values", signalVector2}};
+        write_csv("signal2.csv", S2);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> C1 = {{"Values", corVector1}};
+        write_csv("cor1.csv", C1);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> C2 = {{"Values", corVector2}};
+        write_csv("cor2.csv", C2);
     }
 
     int GetSignalValue(int time) //gets value of signal at time
@@ -266,9 +289,9 @@ class SFA : public Model
         int j2 = round(26.0f + 25.0f * sin((M_PI/180.0f*time*360.0f/ro) - phi));
 
         input_vector.clear();
-        for(int i=1;i<=NUM_INPUT_NEURONS_X;i++)
+        for(int i=1;i<=NUM_INPUT_NEURONS_Y;i++)
         {
-            for(int j=1;j<=NUM_INPUT_NEURONS_Y;j++)
+            for(int j=1;j<=NUM_INPUT_NEURONS_X;j++)
             {
                 if(j == j1 && i == j2)
                     input_vector.push_back(1.0f);
@@ -511,12 +534,11 @@ class SFA : public Model
 
 
 
-        for(int index1 = 0;index1<NUM_INPUT_NEURONS_X;index1++)
+        for(int index1 = 0;index1<NUM_INPUT_NEURONS_Y * NUM_INPUT_NEURONS_X;index1++)
         {
-            for(int index2 = 0;index2<NUM_INPUT_NEURONS_Y;index2++)
-            {
 
-                int neuron_index = index1*NUM_INPUT_NEURONS_X + index2;
+
+                int neuron_index = index1;
                 Layer* inputLayer = &(getNetwork()->m_layers[0]);
                 Neuron* thisNeuron = &(*inputLayer)[neuron_index];
                 double dw1 = CalculateDelWeight(V1,U1,y1,y1_bar,y1_tilde,neuron_index);
@@ -528,9 +550,9 @@ class SFA : public Model
 
             }
         }      
-    }
+    
 
-    vector<double> GenerateInputs(int number_to_encode)
+    vector<double> GenerateInputs(int number_to_encode)                    
     {
         vector<double> inputVector; //one hot encoding
         inputVector.clear();
@@ -552,9 +574,9 @@ class SFA : public Model
     {
         vector<double> inputVector; //one hot encoding
         inputVector.clear();
-        for(int index1 = 1;index1 <= NUM_INPUT_NEURONS_X; index1++)
+        for(int index1 = 1;index1 <= NUM_INPUT_NEURONS_Y; index1++)
         {   
-            for(int index2 = 1;index2 <= NUM_INPUT_NEURONS_Y; index2++)
+            for(int index2 = 1;index2 <= NUM_INPUT_NEURONS_X; index2++)
             {
                 if(number1 == index2 && number2 == index1)
                 {
