@@ -39,7 +39,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 1000*ro;
+    int TOTAL_TIME = 4000*ro;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
@@ -133,6 +133,24 @@ class SFA : public Model
     }
 
 
+    double GetCorrelationTrace(vector<double> va, vector<double> vb,int t)
+    {
+        int time_step = t;
+        int lambda_correlation = fmin(20*ro,time_step);
+        vector<double> vector_y1;
+        vector<double> vector_y2;
+
+        for(int i=resultVector1.size()-lambda_correlation;i<resultVector1.size();i++)
+        {
+            if(i>-1)
+            {
+                vector_y1.push_back(va[i]);
+                vector_y2.push_back(vb[i]);
+            }
+        }
+        return pearsoncoeff(vector_y1,vector_y2);
+    }
+
 
 
 
@@ -220,8 +238,7 @@ class SFA : public Model
             OscillateFeedForwardTuple(v[0],v[1],t);
 
 
-            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
-            corVector2.push_back(pearsoncoeff(signalVector2,resultVector2));
+
 
         }
         alpha = 0.001f;
@@ -235,8 +252,8 @@ class SFA : public Model
 
 
 
-            corVector1.push_back(pearsoncoeff(signalVector1,resultVector1));
-            corVector2.push_back(pearsoncoeff(signalVector2,resultVector2));
+            corVector1.push_back(GetCorrelationTrace(signalVector1,resultVector2,t));
+            corVector2.push_back(GetCorrelationTrace(signalVector2,resultVector2,t));
         }  
         
         std::vector<std::pair<std::string,
