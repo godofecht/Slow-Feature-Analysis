@@ -39,7 +39,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 4000*ro;
+    int TOTAL_TIME = 8000*ro;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
@@ -136,7 +136,7 @@ class SFA : public Model
     double GetCorrelationTrace(vector<double> va, vector<double> vb,int t)
     {
         int time_step = t;
-        int lambda_correlation = fmin(20*ro,time_step);
+        int lambda_correlation = fmin(100*ro,time_step);
         vector<double> vector_y1;
         vector<double> vector_y2;
 
@@ -305,6 +305,8 @@ class SFA : public Model
         float phi = (float)M_PI/180.0f*time*17.0f/360.0f;
         int j1 = round(26.0f + 25.0f * sin((M_PI/180.0f*time*360.0f/ro) + phi));
         int j2 = round(26.0f + 25.0f * sin((M_PI/180.0f*time*360.0f/ro) - phi));
+
+   //     cout<<j2<<endl;
 
         input_vector.clear();
         for(int i=1;i<=NUM_INPUT_NEURONS_Y;i++)
@@ -565,9 +567,8 @@ class SFA : public Model
                 UpdateNeuronWithDelta(thisNeuron,dw1,0);
                 UpdateNeuronWithDelta(thisNeuron,dw2,1);
 
-
-            }
-        }      
+        }
+    }      
     
 
     vector<double> GenerateInputs(int number_to_encode)                    
