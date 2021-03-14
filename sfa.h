@@ -12,6 +12,8 @@
 
 class SFA : public Model
 {
+
+    std::vector<double> corVector1,corVector2; //correlation vector. I should probably move this to the header.
     double alpha = 0.001f;
 
     double gamma_long = 0.0f,gamma_short = 0.0f;
@@ -39,7 +41,7 @@ class SFA : public Model
     unsigned NUM_INPUT_NEURONS_Y;
     unsigned TIMES_TO_RUN = 1;
     double ro = 450.0f; //period/phase
-    int TOTAL_TIME = 8000*ro;
+    int TOTAL_TIME;
     vector<double> signal;
     vector<double> resultVector;
     vector<double> resultVector1;
@@ -52,18 +54,56 @@ class SFA : public Model
     bool bForward = true;
     double y = 0.0f;
 
+    int NUM_INVARIANCES;
+
 
     std::vector<double> signalVector;
     std::vector<double> signalVector1;
     std::vector<double> signalVector2;
 
+    std::vector<double> f_vector1;
+    std::vector<double> f_vector2;
+
     public:
-    SFA()
+    SFA(float RO, int num_invariances)
     {
-        int NUM_INVARIANCES = 2;
+        ro = RO;
+        TOTAL_TIME = 50*ro;
+
+
+        NUM_INVARIANCES = num_invariances;
         
         if(NUM_INVARIANCES == 1)
         {
+            NUM_INPUT_NEURONS_Y = 1;
+            NUM_INPUT_NEURONS_X = 101;
+
+            lambda_long = 2.0f * ro;
+            lambda_short = ro/31.0f;
+            gamma_long = pow(0.5f,(1.0f/(lambda_long)));
+            gamma_short = pow(0.5f,(1.0f/(lambda_short)));
+
+            y_tilde = 0.0f;
+            y_bar = 0.0f;
+            U = 0.000f;
+            V = 0.000f;
+
+
+            vector<unsigned> a;
+            a.push_back(NUM_INPUT_NEURONS_X);
+            a.push_back(1);
+            SetTopology(a);
+            InitializeTopology();
+
+            for(int i=0;i<NUM_INPUT_NEURONS_X;i++)
+            {
+                x_bar_vector.push_back(0.0f);
+                x_tilde_vector.push_back(0.0f);
+                del_weight_vector.push_back(0.0f);
+                input_vector.push_back(0.0f);
+            }
+/*
+
             lambda_long = 2.0f * ro;
             lambda_short = ro/31.0f;
             gamma_long = pow(0.5f,(1.0f/(lambda_long)));
@@ -87,6 +127,8 @@ class SFA : public Model
                 del_weight_vector.push_back(0.0f);
                 input_vector.push_back(0.0f);
             }
+
+*/
         }
         else if(NUM_INVARIANCES == 2)
         {
@@ -136,23 +178,58 @@ class SFA : public Model
     double GetCorrelationTrace(vector<double> va, vector<double> vb,int t)
     {
         int time_step = t;
-        int lambda_correlation = fmin(100*ro,time_step);
+        int lambda_correlation = fmin(11*ro,time_step);
         vector<double> vector_y1;
         vector<double> vector_y2;
+        vector_y1.clear();
+        vector_y2.clear();
 
-        for(int i=resultVector1.size()-lambda_correlation;i<resultVector1.size();i++)
+
+     //       cout<<va.size()<<endl;
+     //       cout<<lambda_correlation<<endl;
+
+        for(int i=vb.size()-lambda_correlation;i<vb.size();i++)
         {
             if(i>-1)
             {
+             //   cout<<va[i]<<endl;
                 vector_y1.push_back(va[i]);
                 vector_y2.push_back(vb[i]);
             }
         }
-        return pearsoncoeff(vector_y1,vector_y2);
+        double val =  pearsoncoeff(va,vb);
+
+  //      cout<<val<<endl;
+
+        if(isnan(val))
+            return 0;
+        else
+            return val;        
     }
 
 
+    void reset1Inv()
+    {
+            y_tilde = 0.0f;
+            y_bar = 0.0f;
+            U = 0.000f;
+            V = 0.000f;
 
+
+            vector<unsigned> a;
+            a.push_back(NUM_INPUT_NEURONS_X);
+            a.push_back(1);
+            SetTopology(a);
+            InitializeTopology();
+
+            for(int i=0;i<NUM_INPUT_NEURONS_X;i++)
+            {
+                x_bar_vector.push_back(0.0f);
+                x_tilde_vector.push_back(0.0f);
+                del_weight_vector.push_back(0.0f);
+                input_vector.push_back(0.0f);
+            }
+    }
 
 
 
@@ -194,13 +271,22 @@ class SFA : public Model
 
     void Train()
     {
+
+        //Pre-processing
         alpha = 0.0f;
         for(int t=0;t<4.0f * ro;t++)
         {
             int v = GetSignalValue(t);
             signalVector.push_back(v);
             OscillateFeedForward(v,t);
+
+            f_vector1.push_back(log(V/U));
         }
+
+        signalVector.clear();
+        resultVector.clear();
+
+        //Training
         alpha = 0.001f;
         for(int t = 4.0f * ro;t<(4.0f*ro+TOTAL_TIME);t++)
         {
@@ -208,20 +294,46 @@ class SFA : public Model
             signalVector.push_back(v);
             OscillateFeedForward(v,t);
             getNetwork()->UpdateWeights();
+
+            f_vector1.push_back(log(V/U));
+
+
+            double correlation = GetCorrelationTrace(signalVector,resultVector,t);
+       //     cout<<correlation<<endl;
+         //   cout<<resultVector.size()<<endl;
+            corVector1.push_back(correlation);
         }  
+
+        string ro_string = to_string(ro);
+        string prefix_o = "Output: ro= ";
         
         std::vector<std::pair<std::string,
         std::vector<double>>> vals = {{"Values", resultVector}};
-        write_csv("values.csv", vals);
+        string stt = prefix_o+ro_string+" .csv";
+        write_csv(ro_string + " values.csv", vals);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> f_vals = {{"Values", f_vector1}};
+        string spp = (string)"F values: ro= "+ro_string+(string)" .csv";
+        write_csv(ro_string + " F.csv", f_vals);
+
+        std::vector<std::pair<std::string,
+        std::vector<double>>> c_vals = {{"Values", corVector1}};
+        write_csv(ro_string + " Cor.csv", c_vals);
+
+/*
         std::vector<std::pair<std::string,
         std::vector<double>>> vals2 = {{"j", getNetwork()->GetWeights()}};
         write_csv("weight_vector.csv", vals2);
+*/
+
+
     }
 
 
     void TrainTwoInvariances()
     {
-        vector<double> corVector1,corVector2; //correlation vector. I should probably move this to the header.
+
 
         cout<<"started training"<<endl;
         alpha = 0.0f;
@@ -241,6 +353,10 @@ class SFA : public Model
 
 
         }
+
+        signalVector1.clear(); signalVector2.clear();
+        resultVector1.clear(); resultVector2.clear();
+
         alpha = 0.001f;
         for(int t = 4.0f * ro;t<(4.0f*ro+TOTAL_TIME);t++)
         {
@@ -252,8 +368,8 @@ class SFA : public Model
 
 
 
-            corVector1.push_back(GetCorrelationTrace(signalVector1,resultVector2,t));
-            corVector2.push_back(GetCorrelationTrace(signalVector2,resultVector2,t));
+    //        corVector1.push_back(GetCorrelationTrace(signalVector1,resultVector2,t));
+    //        corVector2.push_back(GetCorrelationTrace(signalVector2,resultVector2,t));
         }  
         
         std::vector<std::pair<std::string,
@@ -331,11 +447,11 @@ class SFA : public Model
         double alphaV = alpha/V;
         double alphaU = alpha/U;
 
-        if(isnan(alphaV))
+  /*      if(isnan(alphaV))
             alphaV = 0.0f;
         if(isnan(alphaU))
             alphaU = 0.0f;
-    
+    */
     
             
         double dely = y-y_bar;
@@ -349,14 +465,18 @@ class SFA : public Model
 
     double CalculateDelWeight(double v, double u, double output, double y_b, double y_ti, int i)
     {
+
+        //we need V, U, output, y_bar, y_tilde, and i
+
+
         double alphaV = alpha/v;
         double alphaU = alpha/u;
 
-        if(isnan(alphaV))
+    /*    if(isnan(alphaV))
             alphaV = 0.0f;
         if(isnan(alphaU))
             alphaU = 0.0f;
-
+*/
 
                
         double dely = output-y_b;
@@ -467,7 +587,7 @@ class SFA : public Model
         double wah = -1.0f * pearsoncoeff(vector_y1,vector_y2);
 
         if(isnan(wah))
-           wah = 0.0f;
+          wah = 0.0f;
         
 
         return wah;
@@ -561,10 +681,12 @@ class SFA : public Model
                 int neuron_index = index1;
                 Layer* inputLayer = &(getNetwork()->m_layers[0]);
                 Neuron* thisNeuron = &(*inputLayer)[neuron_index];
+
                 double dw1 = CalculateDelWeight(V1,U1,y1,y1_bar,y1_tilde,neuron_index);
-                double dw2 = CalculateDelWeight(V2,U2,y2,y2_bar,y2_tilde,neuron_index);
-          
                 UpdateNeuronWithDelta(thisNeuron,dw1,0);
+
+                
+                double dw2 = CalculateDelWeight(V2,U2,y2,y2_bar,y2_tilde,neuron_index);
                 UpdateNeuronWithDelta(thisNeuron,dw2,1);
 
         }
@@ -591,10 +713,13 @@ class SFA : public Model
 
     vector<double> GenerateInputsFromTuple(int number1,int number2)
     {
+        cout<<number1<<endl;
+        
         vector<double> inputVector; //one hot encoding
         inputVector.clear();
         for(int index1 = 1;index1 <= NUM_INPUT_NEURONS_Y; index1++)
         {   
+            cout<<index1<<endl;
             for(int index2 = 1;index2 <= NUM_INPUT_NEURONS_X; index2++)
             {
                 if(number1 == index2 && number2 == index1)

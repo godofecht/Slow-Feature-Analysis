@@ -21,8 +21,11 @@ Network::Network(const vector <unsigned> &topology)
 	}
 
 
-	NormalizeWeights(0);
-	NormalizeWeights(1); //because we have two output neurons
+	//for stone and bray sfa
+	for(int i=0;i<topology.back();i++)
+	{
+		NormalizeWeights(i);
+	}
 }
 
 void Network::NormalizeWeights(int connection_index)
