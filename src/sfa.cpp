@@ -182,9 +182,9 @@ void SFA::Train()
     }
 
     string ro_string = to_string(ro);
-    write_csv(ro_string + " values.csv", {{"Values", resultVector}});
-    write_csv(ro_string + " F.csv", {{"Values", f_vector1}});
-    write_csv(ro_string + " Cor.csv", {{"Values", corVector1}});
+    write_csv("data/" + ro_string + " values.csv", {{"Values", resultVector}});
+    write_csv("data/" + ro_string + " F.csv", {{"Values", f_vector1}});
+    write_csv("data/" + ro_string + " Cor.csv", {{"Values", corVector1}});
 }
 
 void SFA::TrainTwoInvariances()
@@ -212,13 +212,13 @@ void SFA::TrainTwoInvariances()
         getNetwork()->UpdateWeights();
     }
 
-    write_csv("output1.csv", {{"Values", resultVector1}});
-    write_csv("output2.csv", {{"Values", resultVector2}});
-    write_csv("weight_vector.csv", {{"j", getNetwork()->GetWeights()}});
-    write_csv("signal1.csv", {{"Values", signalVector1}});
-    write_csv("signal2.csv", {{"Values", signalVector2}});
-    write_csv("cor1.csv", {{"Values", corVector1}});
-    write_csv("cor2.csv", {{"Values", corVector2}});
+    write_csv("data/output1.csv", {{"Values", resultVector1}});
+    write_csv("data/output2.csv", {{"Values", resultVector2}});
+    write_csv("data/weight_vector.csv", {{"j", getNetwork()->GetWeights()}});
+    write_csv("data/signal1.csv", {{"Values", signalVector1}});
+    write_csv("data/signal2.csv", {{"Values", signalVector2}});
+    write_csv("data/cor1.csv", {{"Values", corVector1}});
+    write_csv("data/cor2.csv", {{"Values", corVector2}});
 }
 
 int SFA::GetSignalValue(int time)
