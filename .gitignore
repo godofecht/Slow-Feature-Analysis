@@ -1,0 +1,5 @@
+build/
+bin/
+*.o
+main
+run_tests
