@@ -20,9 +20,11 @@ inline double mean(const std::vector<double>& a)
 inline double sqsum(const std::vector<double>& a)
 {
     double s = 0;
-    for (double val : a)
+    size_t n = a.size();
+    #pragma omp simd reduction(+:s)
+    for (size_t i = 0; i < n; ++i)
     {
-        s += val * val;
+        s += a[i] * a[i];
     }
     return s;
 }
@@ -44,6 +46,7 @@ inline double pearsoncoeff(const std::vector<double>& X, const std::vector<doubl
     double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
     size_t n = X.size();
 
+    #pragma omp simd reduction(+:sumX, sumY, sumXY, sumX2, sumY2)
     for (size_t i = 0; i < n; ++i)
     {
         sumX += X[i];

@@ -132,20 +132,22 @@ void SFA::reset1Inv()
 void SFA::write_csv(string filename, vector<pair<string, vector<double>>> dataset)
 {
     ofstream myFile(filename);
-    for (int j = 0; j < (int)dataset.size(); ++j)
+    for (size_t j = 0; j < dataset.size(); ++j)
     {
-        myFile << dataset.at(j).first;
-        if (j != (int)dataset.size() - 1) myFile << ",";
+        myFile << dataset[j].first;
+        if (j != dataset.size() - 1) myFile << ",";
     }
     myFile << "\n";
 
     if (!dataset.empty() && !dataset[0].second.empty()) {
-        for (int i = 0; i < (int)dataset.at(0).second.size(); ++i)
+        size_t rows = dataset[0].second.size();
+        size_t cols = dataset.size();
+        for (size_t i = 0; i < rows; ++i)
         {
-            for (int j = 0; j < (int)dataset.size(); ++j)
+            for (size_t j = 0; j < cols; ++j)
             {
-                myFile << dataset.at(j).second.at(i);
-                if (j != (int)dataset.size() - 1) myFile << ",";
+                myFile << dataset[j].second[i];
+                if (j != cols - 1) myFile << ",";
             }
             myFile << "\n";
         }
@@ -364,14 +366,14 @@ pair<double, double> SFA::GetOutputTuple(int val1, int val2)
     return {results[0], results[1]};
 }
 
-void SFA::UpdateNeuron(Neuron *neuron, int neuron_index)
+void SFA::UpdateNeuron(int neuron_index)
 {
-    neuron->m_outputWeights[0].setDW(del_weight_vector[neuron_index]);
+    getNetwork()->setDeltaWeight(0, neuron_index, 0, del_weight_vector[neuron_index]);
 }
 
-void SFA::UpdateNeuronWithDelta(Neuron *neuron, double dw, int output_neuron_index)
+void SFA::UpdateNeuronWithDelta(double dw, int neuron_index, int output_neuron_index)
 {
-    neuron->m_outputWeights[output_neuron_index].setDW(dw);
+    getNetwork()->setDeltaWeight(0, neuron_index, output_neuron_index, dw);
 }
 
 void SFA::OscillateFeedForward(int signal_value, int time_step)
@@ -387,18 +389,34 @@ void SFA::OscillateFeedForward(int signal_value, int time_step)
     y_bar = getYBar(y, y_bar);
     y_tilde = getYTilde(y, y_tilde);
 
-    Layer *inputLayer = &(getNetwork()->m_layers[0]);
+    double* del_weights_ptr = del_weight_vector.data();
+    double* net_delta_weights_ptr = getNetwork()->m_deltaWeights.data();
+    unsigned topology_next = getNetwork()->m_topology[1];
+
+    double* input_ptr = input_vector.data();
+    double* x_bar_ptr = x_bar_vector.data();
+    double* x_tilde_ptr = x_tilde_vector.data();
+
+    double alphaV = alpha / V;
+    double alphaU = alpha / U;
+    double dely = y - y_bar;
+    double delyt = y - y_tilde;
+
+    #pragma omp target teams distribute parallel for map(to: input_ptr[0:NUM_INPUT_NEURONS_X], x_bar_ptr[0:NUM_INPUT_NEURONS_X], x_tilde_ptr[0:NUM_INPUT_NEURONS_X]) map(tofrom: del_weights_ptr[0:NUM_INPUT_NEURONS_X], net_delta_weights_ptr[0:NUM_INPUT_NEURONS_X*topology_next])
     for (unsigned int neuron_index = 0; neuron_index < NUM_INPUT_NEURONS_X; neuron_index++)
     {
-        Neuron *thisNeuron = &(*inputLayer)[neuron_index];
-        CalculateDelWeights(neuron_index);
-        UpdateNeuron(thisNeuron, neuron_index);
+        double hebbian = alphaV * dely * (input_ptr[neuron_index] - x_bar_ptr[neuron_index]);
+        double antihebbian = -1.0 * (alphaU * delyt * (input_ptr[neuron_index] - x_tilde_ptr[neuron_index]));
+        double dw = hebbian + antihebbian;
+        del_weights_ptr[neuron_index] = dw;
+        net_delta_weights_ptr[neuron_index * topology_next] = dw;
     }
 }
 
 void SFA::OscillateFeedForwardTuple(int signal_value1, int signal_value2, int time_step)
 {
     unsigned total_inputs = NUM_INPUT_NEURONS_X * NUM_INPUT_NEURONS_Y;
+    #pragma omp simd
     for (unsigned int index = 0; index < total_inputs; index++)
     {
         UpdateX(index);
@@ -420,16 +438,33 @@ void SFA::OscillateFeedForwardTuple(int signal_value1, int signal_value2, int ti
     y2_bar = getYBar(y2, y2_bar);
     y2_tilde = getYTilde(y2, y2_tilde);
 
-    Layer *inputLayer = &(getNetwork()->m_layers[0]);
+    double* net_delta_weights_ptr = getNetwork()->m_deltaWeights.data();
+    unsigned topology_next = getNetwork()->m_topology[1];
+
+    double* input_ptr = input_vector.data();
+    double* x_bar_ptr = x_bar_vector.data();
+    double* x_tilde_ptr = x_tilde_vector.data();
+
+    double alphaV1 = alpha / V1;
+    double alphaU1 = alpha / U1;
+    double dely1 = y1 - y1_bar;
+    double delyt1 = y1 - y1_tilde;
+
+    double alphaV2 = alpha / V2;
+    double alphaU2 = alpha / U2;
+    double dely2 = y2 - y2_bar;
+    double delyt2 = y2 - y2_tilde;
+
+    #pragma omp target teams distribute parallel for map(to: input_ptr[0:total_inputs], x_bar_ptr[0:total_inputs], x_tilde_ptr[0:total_inputs]) map(tofrom: net_delta_weights_ptr[0:total_inputs*topology_next])
     for (unsigned int index1 = 0; index1 < total_inputs; index1++)
     {
-        Neuron *thisNeuron = &(*inputLayer)[index1];
+        double hebbian1 = alphaV1 * dely1 * (input_ptr[index1] - x_bar_ptr[index1]);
+        double antihebbian1 = -1.0 * (alphaU1 * delyt1 * (input_ptr[index1] - x_tilde_ptr[index1]));
+        net_delta_weights_ptr[index1 * topology_next + 0] = hebbian1 + antihebbian1;
 
-        double dw1 = CalculateDelWeight(V1, U1, y1, y1_bar, y1_tilde, index1);
-        UpdateNeuronWithDelta(thisNeuron, dw1, 0);
-
-        double dw2 = CalculateDelWeight(V2, U2, y2, y2_bar, y2_tilde, index1);
-        UpdateNeuronWithDelta(thisNeuron, dw2, 1);
+        double hebbian2 = alphaV2 * dely2 * (input_ptr[index1] - x_bar_ptr[index1]);
+        double antihebbian2 = -1.0 * (alphaU2 * delyt2 * (input_ptr[index1] - x_tilde_ptr[index1]));
+        net_delta_weights_ptr[index1 * topology_next + 1] = hebbian2 + antihebbian2;
     }
 }
 
