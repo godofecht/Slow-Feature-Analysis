@@ -87,8 +87,8 @@ public:
     double GetWeightedAntiHebbian(int time_step);
     std::pair<double, double> GetOutputTuple(int val1, int val2);
 
-    void UpdateNeuron(Neuron *neuron, int neuron_index);
-    void UpdateNeuronWithDelta(Neuron *neuron, double dw, int output_neuron_index);
+    void UpdateNeuron(int neuron_index);
+    void UpdateNeuronWithDelta(double dw, int neuron_index, int output_neuron_index);
 
     void OscillateFeedForward(int signal_value, int time_step);
     void OscillateFeedForwardTuple(int signal_value1, int signal_value2, int time_step);

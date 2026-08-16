@@ -2,7 +2,6 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
-#include "NN.h"
 #include "Network.h"
 #include "sfa.h"
 #include "stats.h"
@@ -20,23 +19,14 @@ void test_stats() {
     std::cout << "Stats tests passed!" << std::endl;
 }
 
-void test_neuron() {
-    std::cout << "Testing Neuron..." << std::endl;
-    Neuron n(2, 0);
-    assert(n.getIndex() == 0);
-    n.setOutputVal(0.5);
-    assert(n.getOutputVal() == 0.5);
-    std::cout << "Neuron tests passed!" << std::endl;
-}
-
 void test_network() {
     std::cout << "Testing Network..." << std::endl;
     std::vector<unsigned> topology = {2, 3, 1};
     Network net(topology);
-    assert(net.m_layers.size() == 3);
-    assert(net.m_layers[0].size() == 2);
-    assert(net.m_layers[1].size() == 3);
-    assert(net.m_layers[2].size() == 1);
+    assert(net.GetTopology().size() == 3);
+    assert(net.GetTopology()[0] == 2);
+    assert(net.GetTopology()[1] == 3);
+    assert(net.GetTopology()[2] == 1);
 
     std::vector<double> inputs = {0.5, 0.8};
     net.feedForward(inputs);
@@ -59,7 +49,6 @@ void test_sfa() {
 
 int main() {
     test_stats();
-    test_neuron();
     test_network();
     test_sfa();
     std::cout << "All tests passed!" << std::endl;
